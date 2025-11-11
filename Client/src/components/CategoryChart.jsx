@@ -26,8 +26,8 @@ const CategoryChart = () => {
             <div className="grid grid-cols-2 gap-3 mt-6">
                 {/* MAP METHOD */}
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded">
-                        <span className='tetext-xs font-semibold text-gray-700'>Item Name</span>
+                    <div className="w-3 flex h-3 rounded">
+                        <span className='text-xs font-semibold text-gray-700'>Item Name</span>
                     </div>
                 </div>
             </div>
