@@ -1,6 +1,30 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-const SpendingChart = () => {
+const SpendingChart = ({ expenses }) => {
+
+    //Creates an array of the last 7 dates (from 6 days ago → today).
+    const last7Days = [...Array(7)].map((_, i) => {
+        const date = new Date();//creates today’s date.
+        date.setDate(date.getDate() - (6 - i))//subtracts days so we get 7 days range (from oldest to newest)
+        return date.toISOString().split("T")[0]//converts to "YYYY-MM-DD" format
+    })
+
+    //Prepare chart data for each day
+    const charData = last7Days.map((date) => {
+        const dayExpenses = (expenses || []).filter((e) => {
+            const d = e.date ? String(e.date) : ""
+            return d.split("T")[0] === date || d === date
+        })
+        const total = dayExpenses.reduce(//Adds up all amounts for that day
+            (sum, e) => sum + Number(e.amount || 0),
+            0
+        )
+
+        return {
+            date: new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
+            amount: parseFloat(total.toFixed(2))
+        }
+    })
     return (
         <div className='bg-white rounded-2xl p-6 shadow-lg border-gray-100'>
             <div className="flex items-center justify-between mb-6">
@@ -10,9 +34,9 @@ const SpendingChart = () => {
                 </div>
             </div>
             <ResponsiveContainer width="100%" height={260}>
-                <LineChart>
+                <LineChart data={charData}>
                     <defs>
-                        <linearGradient id='lineDradient' x1='0' y1='0' x2='1' y2='0' >
+                        <linearGradient id='LineGradient' x1='0' y1='0' x2='1' y2='0' >
                             <stop offset="0%" stopColor='#6366F1' />
                             <stop offset="100%" stopColor='#8B5CF6' />
                         </linearGradient>

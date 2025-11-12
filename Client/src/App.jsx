@@ -1,5 +1,5 @@
 import { DollarSign, Plus, ShoppingCart, TrendingUp, Wallet } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import StatCard from './components/StatCard'
 import SpendingChart from './components/SpendingChart'
 import CategoryChart from './components/CategoryChart'
@@ -12,6 +12,11 @@ import { fetchExpenses, createExpenses, updateExpenses, deleteExpenses } from '.
 function App() {
 
   const [expenses, setExpenses] = useState([])
+  const [isLoading, setLoading] = useState(false)
+  const [isModelOpen, setIsModelOpen] = useState(false)
+  const [editExpense, setEditExpense] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterCategory, setFilterCategory] = useState("All")
 
   //STATS CALCULATIONS
   const calculationStats = (expenseList) => {
@@ -34,6 +39,86 @@ function App() {
   }
 
   const stats = calculationStats(expenses)
+
+  //LOAD INITIAL DATA
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+
+      try {
+        const [expData] = await Promise.all([fetchExpenses()]);//Fetch expenses data
+
+        const normalized = (expData || []).map((e) => ({
+          ...e,//The spread operator (...) copies all properties of the expense object into the new object.This way, you keep all existing fields before adding or modifying specific ones
+          date: e?.date
+            ? String(e.date).split("T")[0]// If date exists, keep only the date part (YYYY-MM-DD)
+            : new Date().toISOString().split("T")[0]// Otherwise, use today's date
+        }))
+
+        setExpenses(normalized)
+      } catch (error) {
+        console.error("load error:", error);
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  //ADD FUNCTION
+  const handleAddExpense = async (payload) => {
+    try {
+      const created = await createExpenses();
+
+      if (!created) {
+        throw new Error("No created expense returned")
+      }
+
+      setExpenses((prev) => [
+        { ...created, date: created.date.split("T")[0] },
+        ...prev
+      ])
+      setIsModelOpen(false)
+    } catch (error) {
+      console.error("Create error:", error);
+    }
+  }
+
+  const onEdit = (expense) => {
+    setEditExpense(expense);
+    setIsModelOpen(true)
+  }
+
+  const handleSaveEdit = async (payload) => {
+    if (!editExpense) {
+      return;
+    }
+
+    try {
+      const updated = await updateExpenses(editExpense._id, payload)
+
+      setExpenses((prev) => prev.map((e) => e._id === updated._id
+        ? { ...updated, date: updated.date.split("T")[0] }
+        : e
+      ))
+      setEditExpense(null);
+      setIsModelOpen(false)
+    } catch (error) {
+      console.error("Create error:", error);
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this Expense")) {
+      return;
+    }
+    try {
+      await deleteExpenses(id)
+    } catch (error) {
+      console.error("Create error:", error);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br
      from-slate-50 via-gray-50 to-slate-100">
@@ -94,15 +179,23 @@ function App() {
         {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
           <div className="lg:col-span-3">
-            <SpendingChart />
+            <SpendingChart expenses={expenses} />
           </div>
           <div className="lg:col-span-2">
-            <CategoryChart />
+            <CategoryChart categoryTotal={stats.categoryTotals} />
           </div>
         </div>
 
         {/* TRANSACTION LIST */}
-        <TransactionList />
+        <TransactionList
+          expenses={expenses}
+          onDelete={handleDelete}
+          onEdit={onEdit}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterCategory={filterCategory}
+          setFilterCategory={setFilterCategory}
+        />
       </div>
 
       {/* MODEL */}
